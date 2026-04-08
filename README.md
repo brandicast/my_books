@@ -22,9 +22,10 @@
 3. **啟動 Docker 容器**
    在專案根目錄下執行：
    ```bash
+   mkdir -p data # 確保建立資料存放目錄
    docker compose up -d
    ```
-   這會自動拉取所需的 Node 映像檔，並將前端與後端服務啟動運行。
+   這會自動拉取所需的 Node 映像檔，並將前端與後端服務啟動運行。您的資料庫將會持久化存在 `data/database.sqlite` 中。
 
 4. **開始使用**
    前端預設會執行在 port `5000`。請打開您的瀏覽器並訪問 `http://localhost:5000`。

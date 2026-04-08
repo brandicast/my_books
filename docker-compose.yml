@@ -1,5 +1,6 @@
 services:
   backend:
+    restart: always
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -14,11 +15,12 @@ services:
       - DB_PATH=/app/data/database.sqlite
 
   frontend:
+    restart: always
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5555:5555"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -28,10 +30,11 @@ services:
       - VITE_API_URL=http://localhost:3001
 
   nport:
+    restart: always
     build:
       context: ./nport
       dockerfile: Dockerfile
-    # Use host network so it can access localhost:5000 where frontend is exposed
+    # Use host network so it can access localhost:5555 where frontend is exposed
     network_mode: host
     depends_on:
       - frontend

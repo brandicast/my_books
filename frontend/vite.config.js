@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      port: 5555,
+      port: 6666,
       host: '0.0.0.0',
       allowedHosts: allowedHosts,
       proxy: {

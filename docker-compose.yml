@@ -24,7 +24,7 @@ services:
     env_file:
       - ./frontend/.env
     ports:
-      - "5555:5555"
+      - "6666:6666"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -38,7 +38,7 @@ services:
     build:
       context: ./nport
       dockerfile: Dockerfile
-    # Use host network so it can access localhost:5555 where frontend is exposed
+    # Use host network so it can access localhost:6666 where frontend is exposed
     network_mode: host
     depends_on:
       - frontend

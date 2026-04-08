@@ -19,39 +19,41 @@ export default defineConfig(({ mode }) => {
       }
     },
 
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      workbox: {
-        cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
-      },
-      devOptions: {
-        enabled: true,
-        type: 'module',
-      },
-      manifest: {
-        name: '麵包國圖書管理',
-        short_name: '麵包國圖書館',
-        description: '麵包國圖書管理系統 (PWA)',
-        theme_color: '#f2f2f7',
-        icons: [
-          {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      }
-    })
-  ]
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        injectRegister: 'auto',
+        workbox: {
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
+        },
+        devOptions: {
+          enabled: true,
+          type: 'module',
+        },
+        manifest: {
+          name: '麵包國圖書管理',
+          short_name: '麵包國圖書館',
+          description: '麵包國圖書管理系統 (PWA)',
+          theme_color: '#f2f2f7',
+          display: 'standalone',
+          display_override: ['fullscreen', 'minimal-ui', 'standalone'],
+          icons: [
+            {
+              src: '/bread-192x192.png',
+              sizes: '192x192',
+              type: 'image/png'
+            },
+            {
+              src: '/bread-512x512.png',
+              sizes: '512x512',
+              type: 'image/png'
+            }
+          ]
+        }
+      })
+    ]
   };
 });

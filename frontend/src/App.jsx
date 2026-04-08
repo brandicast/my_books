@@ -27,6 +27,72 @@ const OfflineBadge = () => {
   );
 };
 
+// ─── PWA Install Banner ───────────────────────────────────────────────────────
+const PWAInstallBanner = () => {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showBanner, setShowBanner] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    // Detect if already installed or in standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) return;
+
+    // Check if user has dismissed it before in this session
+    if (sessionStorage.getItem('pwa_banner_dismissed')) return;
+
+    // Detect iOS
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(ios);
+
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // For iOS, we show it manually since there's no event
+    if (ios) {
+      setTimeout(() => setShowBanner(true), 2000);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setShowBanner(false);
+    }
+  };
+
+  const dismiss = () => {
+    setShowBanner(false);
+    sessionStorage.setItem('pwa_banner_dismissed', 'true');
+  };
+
+  if (!showBanner) return null;
+
+  return (
+    <div className="pwa-banner">
+      <img src="/bread-192x192.png" alt="App Icon" className="pwa-banner-icon" />
+      <div className="pwa-banner-text">
+        <h4>麵包國圖書管理</h4>
+        <p>{isIOS ? '點擊分享並「加入主畫面」以安裝' : '安裝應用程式以獲得最佳體驗'}</p>
+      </div>
+      {!isIOS && deferredPrompt && (
+        <button className="pwa-install-btn" onClick={handleInstall}>安裝</button>
+      )}
+      <button className="pwa-close-btn" onClick={dismiss}><X size={20} /></button>
+    </div>
+  );
+};
+
 // ─── Bottom Nav ───────────────────────────────────────────────────────────────
 const NavBar = () => {
   const { pathname } = useLocation();
@@ -669,6 +735,7 @@ export default function App() {
   return (
     <Router>
       <OfflineBadge />
+      <PWAInstallBanner />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/scan" element={<ScanPage />} />

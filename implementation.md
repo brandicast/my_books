@@ -19,6 +19,11 @@
 - **實作考量**：
   - 導入了 `vite-plugin-pwa`，支援離線模式並具有桌面圖示設定 (Manifest)。
   - **自動更新邏輯**：為了避免 PWA 強制快取舊版網頁導致 "Failed to fetch dynamically imported module" 錯亂，採用 `autoUpdate` 加上 `workbox: { skipWaiting: true, clientsClaim: true }`，並於入口處 (`main.jsx`) 設定 `controllerchange` 監聽器，當背景一偵測到新版便強制重載刷新。
+  - **顯示模式優化**：利用 `display_override` 設定為 `['fullscreen', 'minimal-ui', 'standalone']`，讓支援的系統優先以全螢幕沈浸式開啟。
+  - **智慧安裝提示 (Install Banner)**：
+    - **Android/Chrome**：捕捉 `beforeinstallprompt` 事件並顯示自訂橫幅，引導點擊安裝。
+    - **iOS**：偵測到 iOS 裝置且非獨立模式開啟時，顯示「分享並加入主畫面」的手動導引。
+    - **狀態持久化**：使用 `sessionStorage` 紀錄已關閉狀態，避免同一瀏覽週期重複干擾。
 
 ### 2. 相機條碼掃描模組
 - **需求**：需要穩定能讀取書籍 ISBN（主要是 EAN-13 與一些舊式條碼）的相機工具。
@@ -44,6 +49,7 @@
 - **實作考量**：
   - **刪除保護**：前端呼叫 DELETE 之前會跳出 Prompt，使用者需輸入一組配置在後端 `.env` 內的 `DELETE_PIN`。前後端透過 `x-pin-code` Header 傳遞比對。
   - **動態白名單**：Vite 開發環境中的 `allowedHosts`（如 ngrok 的動態位址）已經抽離至 `frontend/.env` 中。
+  - **資料持久化 (Persistence)**：Docker 環境下透過 `docker-compose.yml` 將 `./data` 與容器內的 `/app/data` 對應，確保資料庫檔案 `database.sqlite` 在重啟或重新建置時不會遺失。
 
 ---
 

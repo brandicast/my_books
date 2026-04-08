@@ -4,6 +4,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
     ports:
       - "3001:3001"
     volumes:
@@ -19,6 +21,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    env_file:
+      - ./frontend/.env
     ports:
       - "5555:5555"
     volumes:

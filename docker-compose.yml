@@ -26,3 +26,12 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - VITE_API_URL=http://localhost:3001
+
+  nport:
+    build:
+      context: ./nport
+      dockerfile: Dockerfile
+    # Use host network so it can access localhost:5000 where frontend is exposed
+    network_mode: host
+    depends_on:
+      - frontend

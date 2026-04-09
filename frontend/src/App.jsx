@@ -8,6 +8,49 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 const API_BASE = '';
 
+// ─── Environment Detection ────────────────────────────────────────────────────
+const checkIsWebView = () => {
+  const ua = navigator.userAgent || '';
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  
+  // Common indicators for WebViews and In-App Browsers
+  const isWebView = (isAndroid && /wv/i.test(ua)) || 
+                    (isIOS && !/Safari/i.test(ua)) || // iOS WebViews often lack 'Safari' while keeping 'AppleWebKit'
+                    /Line/i.test(ua) || 
+                    /FBAN|FBAV/i.test(ua) || 
+                    /Instagram/i.test(ua);
+  
+  return isWebView;
+};
+
+// ─── WebView Warning Component ────────────────────────────────────────────────
+const WebViewWarning = ({ onDismiss }) => {
+  return (
+    <div className="webview-warning-overlay">
+      <div className="webview-warning-card">
+        <h2>⚠️ 瀏覽器不相容</h2>
+        <p>偵測到您正在使用 App 內視窗開啟，這會導致相機無法正常運作。</p>
+        
+        <div className="guide-steps">
+          <div className="guide-step">
+            <div className="step-num">1</div>
+            <div>點擊右上角或右下角的序單圖示（三個點或指南針）</div>
+          </div>
+          <div className="guide-step">
+            <div className="step-num">2</div>
+            <div>選取「在瀏覽器中開啟」或「使用 Chrome 開啟」</div>
+          </div>
+        </div>
+
+        <button onClick={onDismiss} className="secondary" style={{ width: '100%' }}>
+          我已理解，繼續嘗試
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ─── Offline Banner ───────────────────────────────────────────────────────────
 const OfflineBadge = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -292,6 +335,7 @@ const ScanPage = () => {
   const [manualIsbn, setManualIsbn] = useState('');
   const [camError, setCamError] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [showWebViewWarning, setShowWebViewWarning] = useState(false);
   const scannerRef = useRef(null);
   const mountedRef = useRef(true);
   const startPromiseRef = useRef(null);
@@ -309,6 +353,13 @@ const ScanPage = () => {
   };
 
   const startScanner = async () => {
+    // 檢查是否在 WebView 環境
+    const isWebView = checkIsWebView();
+    if (isWebView && !sessionStorage.getItem('webview_warning_dismissed')) {
+      setShowWebViewWarning(true);
+      return;
+    }
+
     if (startPromiseRef.current) return;
     
     startPromiseRef.current = (async () => {
@@ -345,10 +396,14 @@ const ScanPage = () => {
       } catch (err) {
         console.error('Camera error:', err);
         if (mountedRef.current) {
-          setCamError(
-            typeof err === 'string' ? err :
-            err?.message || '無法啟動相機，請確認已授予相機權限'
-          );
+          const errMsg = typeof err === 'string' ? err : (err?.message || '');
+          // 針對 NotAllowedError 提供更詳細的提示
+          if (errMsg.includes('NotAllowedError') || err?.name === 'NotAllowedError') {
+            setCamError('相機權限遭拒：如果您是在 LINE/FB 內開啟，請點擊選單並選擇「在瀏覽器中開啟」。');
+            if (isWebView) setShowWebViewWarning(true);
+          } else {
+            setCamError(errMsg || '無法啟動相機，請確認已授予相機權限');
+          }
         }
       } finally {
         startPromiseRef.current = null;
@@ -373,6 +428,13 @@ const ScanPage = () => {
 
   return (
     <div className="app-container">
+      {showWebViewWarning && (
+        <WebViewWarning onDismiss={() => {
+          setShowWebViewWarning(false);
+          sessionStorage.setItem('webview_warning_dismissed', 'true');
+          startScanner(); // 再次嘗試啟動
+        }} />
+      )}
       <header><h1>掃描 ISBN</h1></header>
       <div className="card">
         <div id="reader" style={{ borderRadius: 10, overflow: 'hidden', minHeight: 250, background: '#000' }}></div>

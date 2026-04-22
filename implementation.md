@@ -32,11 +32,13 @@
   - 加入了相機鎖的機制 (Lock Mechanism)，防止在 React 嚴格模式 (StrictMode) 下引發快速雙重觸發導致的「出現兩個攝影機視窗」Bug。
   - 指定 `facingMode: environment` 即預設使用手機後鏡頭。
 
-### 3. 重複書籍的數量管理 (Quantity)
-- **需求**：因為同樣的書籍可能會購買多本，在掃描重複 ISBN 時不應直接報錯阻擋。
+### 3. 多來源 ISBN 搜尋與重複管理 (Multi-source ISBN Search)
+- **需求**：單一搜尋源 (Google Books) 常漏掉台灣在地或舊版書籍。
 - **實作考量**：
-  - 當查詢 Google Books API 之前，會先 `GET /api/books/isbn/:isbn` 比對自家資料庫。若發現同一本 ISBN，則跳出提示問使用者是否「數量 + 1」。
-  - 後端增加 `PUT /api/books/:id/increment` API 與 `quantity` 欄位以支援此需求。
+  - **串聯式搜尋 (Cascading)**：前端重構為三層搜尋機制，依序為 Google Books API -> Open Library API -> 博客來 (Books.com.tw) 代理抓取。
+  - **後端 Scraper 代理**：由於 博客來 無公開 API 且具 CORS 限制，後端新增了 `/api/proxy/isbn/:isbn` 路由，使用 `axios` 與 `cheerio` 進行即時頁面解析。
+  - **ISBN 正規化**：所有搜尋前均會移除橫杠 (`-`) 與空格，最大化匹配率。
+  - **重複檢查**：在進入外部搜尋前，會先比對本地資料庫。若發現同一本 ISBN，則跳出提示問使用者是否「數量 + 1」。
 
 ### 4. 欄位體驗優化與字串處理 (Autocomplete & Split)
 - **需求**：標籤 (Hashtags)、存放地點、所有人等需要能快速帶入舊記錄；且要容許各種逗號分隔全形的意外。
@@ -54,6 +56,6 @@
 ---
 
 ## 後續擴充建議
-1. 可以加入更多 API 來源 (如博客來、TAAZE) 增強在台灣繁體圖書的抓取命中率。
+1. 可以加入更多 API 來源 (如 TAAZE、國家圖書館) 進一步增強特定書目的抓取命中率。
 2. 開放書籍狀態管理（例如：借出中、已歸還），並連結「借閱人」資料表。
 3. 圖表分析統計目前所有藏書的種類比例。

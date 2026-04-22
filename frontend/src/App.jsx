@@ -490,11 +490,14 @@ const BookFormPage = () => {
 
   const checkDbAndFetchGoogle = async () => {
     setFetchStatus('loading');
+    const cleanIsbn = isbn.replace(/[- ]/g, ''); // 正規化 ISBN，移除破折號與空格
+    
+    // 1. 先檢查本地資料庫是否已有此書
     try {
-      const res = await fetch(`${API_BASE}/api/books/isbn/${isbn}`);
+      const res = await fetch(`${API_BASE}/api/books/isbn/${cleanIsbn}`);
       if (res.ok) {
         const exist = await res.json();
-        const confirmIncrement = window.confirm(`此書籍已經存在您的藏書庫中 (已擁有 ${exist.quantity} 本)。\\n是否要直接將數量 +1？`);
+        const confirmIncrement = window.confirm(`此書籍已經存在您的藏書庫中 (已擁有 ${exist.quantity} 本)。\n是否要直接將數量 +1？`);
         if (confirmIncrement) {
           await fetch(`${API_BASE}/api/books/${exist.id}/increment`, { method: 'PUT' });
           navigate('/');
@@ -503,8 +506,9 @@ const BookFormPage = () => {
       }
     } catch (e) {}
 
+    // 2. 嘗試從 Google Books API 獲取
     try {
-      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`);
       const data = await res.json();
       if (data.totalItems > 0) {
         const info = data.items[0].volumeInfo;
@@ -515,12 +519,51 @@ const BookFormPage = () => {
           thumbnail: info.imageLinks?.thumbnail?.replace('http://', 'https://') || ''
         }));
         setFetchStatus('found');
-      } else {
-        setFetchStatus('not_found');
+        return;
       }
     } catch (err) {
-      setFetchStatus('error');
+      console.log('Google Books fetch failed, trying next...');
     }
+
+    // 3. 嘗試從 Open Library API 獲取
+    try {
+      const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`);
+      const data = await res.json();
+      const olKey = `ISBN:${cleanIsbn}`;
+      if (data[olKey]) {
+        const info = data[olKey];
+        setFormData(prev => ({
+          ...prev,
+          title: info.title || '',
+          authors: info.authors ? info.authors.map(a => a.name) : [],
+          thumbnail: info.cover?.large || info.cover?.medium || info.cover?.small || ''
+        }));
+        setFetchStatus('found');
+        return;
+      }
+    } catch (err) {
+      console.log('Open Library fetch failed, trying next...');
+    }
+
+    // 4. 嘗試從後端代理的博客來 Scraper 獲取
+    try {
+      const res = await fetch(`${API_BASE}/api/proxy/isbn/${cleanIsbn}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFormData(prev => ({
+          ...prev,
+          title: data.title || '',
+          authors: data.authors || [],
+          thumbnail: data.thumbnail || ''
+        }));
+        setFetchStatus('found');
+        return;
+      }
+    } catch (err) {
+      console.log('Books.com.tw proxy failed');
+    }
+
+    setFetchStatus('not_found');
   };
 
   const fetchExistingBook = async () => {

@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
 const path = require('path');
+const axios = require('axios');
+const cheerio = require('cheerio');
 require('dotenv').config();
 
 const app = express();
@@ -55,6 +57,58 @@ app.get('/api/books/isbn/:isbn', (req, res) => {
     res.json(book);
   } catch (error) {
     res.status(500).json({ error: 'Failed' });
+  }
+});
+
+app.get('/api/proxy/isbn/:isbn', async (req, res) => {
+  const { isbn } = req.params;
+  // Books.com.tw search URL - removing /cat/all/ for better compatibility
+  const url = `https://search.books.com.tw/search/query/key/${isbn}`;
+  
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.books.com.tw/'
+      },
+      timeout: 10000
+    });
+
+    const $ = cheerio.load(response.data);
+    // Updated selectors based on recent search results
+    const firstItem = $('div.table-td[id^="prod-itemlist"], .table-searchlist .item, .item').first();
+
+    if (!firstItem.length) {
+      return res.status(404).json({ error: 'No results found on Books.com.tw' });
+    }
+
+    const title = firstItem.find('h4 a').attr('title') || firstItem.find('h4 a').text().trim();
+    const authors = firstItem.find('a[rel="go_author"], .author a').map((i, el) => $(el).text().trim()).get();
+    
+    // Thumbnail handling: Books.com.tw uses lazy loading with .b-lazy class or data-src
+    let thumbnail = firstItem.find('img.b-lazy').attr('data-src') ||
+                    firstItem.find('img.box').attr('data-src') || 
+                    firstItem.find('img.box').attr('src') ||
+                    firstItem.find('.pic img').attr('src');
+    
+    // Cleanup thumbnail URL
+    if (thumbnail) {
+      if (thumbnail.startsWith('//')) thumbnail = 'https:' + thumbnail;
+      if (thumbnail.startsWith('http://')) thumbnail = thumbnail.replace('http://', 'https://');
+      // Remove any encoding artifacts if necessary
+      thumbnail = thumbnail.replace(/&amp;/g, '&');
+    }
+
+    res.json({
+      title,
+      authors: authors.length ? authors : [],
+      thumbnail: thumbnail || '',
+      source: 'Books.com.tw'
+    });
+  } catch (error) {
+    console.error('Books.com.tw proxy error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch from Books.com.tw' });
   }
 });
 
